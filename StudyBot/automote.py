@@ -11,6 +11,7 @@ import dotenv
 import telebot
 import threading
 from flask import Flask
+from services.sheetService import SheetsService
 
 dotenv.load_dotenv()
 
@@ -22,6 +23,7 @@ EXCEL_ARQUIVO= os.path.join(DIR_BASE , "ciclo_de_estudos_automatizado.xlsx")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
+sheets_service = SheetsService()
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
 
@@ -34,7 +36,7 @@ def notificar_usuario_telegram(mensagem):
     }
     
     try:
-        response = requests.post(url, data=payload, timeout=10)
+        response = requests.post(url, data=payload, timeout=30)
 
         response.raise_for_status()
         print("[Info] Notificação enviada via Telegram com sucesso!")
@@ -85,17 +87,30 @@ def registrar_sessao_estudo(data_str, categoria, materia, tempo_horas, questoes,
         print(f"\n[Erro ao atualizar a planilha]: {e}")
         return False
 
+def registrar_sessao_estudo_online(data_str, categoria, materia, tempo_horas, questoes, acertos, taxa, observacao):
+    sucesso = sheets_service.adicionar_sessao_estudo(
+        data_str, categoria, materia, tempo_horas, questoes, acertos, taxa, observacao
+    )
+    return sucesso, [data_str, categoria, materia, tempo_horas, questoes, acertos, observacao]
+
 def formatar_resposta(lista):
 
+    data_str = lista[0]
     categoria = lista[1]
     materia = lista[2]
     tempo_horas = lista[3]
     questoes = lista[4]
     acertos = lista[5]
-    taxa = lista[6] 
-    observacao = lista[7]
+    observacao = lista[6]
 
-    tempo_minutos = int(tempo_horas * 60)
+    try:
+        tempo_horas_num = float(tempo_horas)
+        tempo_minutos = int(tempo_horas_num * 60)
+    except (ValueError, TypeError):
+        tempo_horas_num = 0.0
+        tempo_minutos = 0
+
+    taxa = (acertos / questoes) if questoes > 0 else 0.0
     taxa_pct = taxa * 100
 
     if taxa_pct >= 80:
@@ -199,13 +214,14 @@ def obter_observacao(message):
 
     bot.send_message(user_id, "⏳ Registrando sua sessão na planilha...")
 
-    sucesso, lista = registrar_sessao_estudo(
+    sucesso, lista = registrar_sessao_estudo_online(
         data_str=hoje,
         categoria=dados['categoria'],
         materia=dados['materia'],
         tempo_horas=dados['tempo_horas'],
         questoes=dados['questoes'],
         acertos=dados['acertos'],
+        taxa=(dados['acertos'] / dados['questoes']) if dados['questoes'] > 0 else 0.0,
         observacao=dados['observacao']
     )
 

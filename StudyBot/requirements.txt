@@ -4,3 +4,4 @@ python-dotenv
 flask
 gunicorn
 openpyxl
+gspread
