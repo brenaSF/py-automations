@@ -5,6 +5,7 @@ import gspread
 
 logger = logging.getLogger(__name__)
 
+
 class SheetsService:
     SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 
@@ -24,9 +25,22 @@ class SheetsService:
 
     def _autenticar(self):
         creds_env = os.getenv("GOOGLE_CREDENTIALS_JSON")
+        
         if creds_env:
-            return gspread.service_account_from_dict(json.loads(creds_env))
-        return gspread.service_account(filename="credentials.json")
+            try:
+                creds_dict = json.loads(creds_env)
+                return gspread.service_account_from_dict(creds_dict)
+            except json.JSONDecodeError as e:
+                logger.error("A variável GOOGLE_CREDENTIALS_JSON não é um JSON válido.")
+                raise e
+        
+        if os.path.exists("credentials.json"):
+            return gspread.service_account(filename="credentials.json")
+            
+        raise FileNotFoundError(
+            "Credenciais não encontradas. Configure a variável de ambiente "
+            "'GOOGLE_CREDENTIALS_JSON' ou adicione o arquivo 'credentials.json'."
+        )
 
     def adicionar_sessao_estudo(self, data_str, categoria, materia, tempo_horas, questoes, acertos, taxa, observacao) -> bool:
         try:
