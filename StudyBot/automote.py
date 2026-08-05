@@ -3,18 +3,19 @@
 # Gera/Atualiza a planilha excel do Ciclo de Estudos, Projeto Pessoal e Inglês
 # ==============================================================================
 
-import pandas as pd
 import datetime
 import os
 import openpyxl
 import requests
 import dotenv
-
 import telebot
-
+import threading
+from flask import Flask
 
 dotenv.load_dotenv()
 
+
+app = Flask(__name__)
 
 DIR_BASE = os.path.dirname(os.path.abspath(__file__))
 EXCEL_ARQUIVO= os.path.join(DIR_BASE , "ciclo_de_estudos_automatizado.xlsx")
@@ -215,8 +216,24 @@ def obter_observacao(message):
     
     del dados_usuario[user_id]
 
+@app.route('/')
+def home():
+    return "Bot do Ciclo de Estudos está rodando online!", 200
+
+def rodar_servidor_web():
+    # O Render fornece a porta automaticamente na variável de ambiente PORT
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)
+
 if __name__ == "__main__":
     print("--- Automação do Ciclo de Estudos ---")
     hoje = datetime.date.today().strftime("%Y-%m-%d")
+
+    thread_web = threading.Thread(target=rodar_servidor_web)
+    thread_web.daemon = True
+    thread_web.start()
+
+    print("Servidor Web Flask iniciado com sucesso!")
+    print("Iniciando escuta do Bot no Telegram...")
 
     bot.polling(none_stop=True)
