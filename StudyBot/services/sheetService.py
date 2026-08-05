@@ -2,6 +2,9 @@ import os
 import json
 import logging
 import gspread
+import dotenv
+
+dotenv.load_dotenv()
 
 logger = logging.getLogger(__name__)
 
