@@ -1,4 +1,6 @@
 pyTelegramBotAPI
 requests
-openpyxl
 python-dotenv
+flask
+gunicorn
+openpyxl
