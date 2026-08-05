@@ -218,22 +218,16 @@ def obter_observacao(message):
 
 @app.route('/')
 def home():
-    return "Bot do Ciclo de Estudos está rodando online!", 200
+    return "Bot do Ciclo de Estudos está online!", 200
 
-def rodar_servidor_web():
-    # O Render fornece a porta automaticamente na variável de ambiente PORT
-    port = int(os.environ.get("PORT", 8000))
-    app.run(host="0.0.0.0", port=port)
+def iniciar_bot():
+    print("🤖 Iniciando escuta do Bot no Telegram...")
+    bot.polling(none_stop=True, interval=0, timeout=20)
+
+thread_bot = threading.Thread(target=iniciar_bot)
+thread_bot.daemon = True
+thread_bot.start()
 
 if __name__ == "__main__":
-    print("--- Automação do Ciclo de Estudos ---")
-    hoje = datetime.date.today().strftime("%Y-%m-%d")
-
-    thread_web = threading.Thread(target=rodar_servidor_web)
-    thread_web.daemon = True
-    thread_web.start()
-
-    print("Servidor Web Flask iniciado com sucesso!")
-    print("Iniciando escuta do Bot no Telegram...")
-
-    bot.polling(none_stop=True)
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)
