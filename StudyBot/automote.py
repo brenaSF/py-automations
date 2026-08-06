@@ -165,10 +165,11 @@ dados_usuario = {}
 
 @bot.message_handler(commands=['estudo', 'start'])
 def iniciar_registro(message):
-    user_id = message.chat.id
-    dados_usuario[user_id] = {}  
+    print("--------------------------------------------------")
+    print(f"[LOG] Executando /estudo para o chat_id: {message.chat.id}")
     
-    print(f"[Debug] Comando /estudo recebido do chat_id: {user_id}")
+    user_id = message.chat.id
+    dados_usuario[user_id] = {}
     
     try:
         msg = bot.send_message(
@@ -176,10 +177,11 @@ def iniciar_registro(message):
             "📚 *NOVO REGISTRO DE ESTUDO*\n\nQual é a *categoria*? (ex: Concurso, Faculdade, Inglês)", 
             parse_mode="Markdown"
         )
+        print("[LOG] Mensagem enviada com sucesso ao Telegram!")
         bot.register_next_step_handler(msg, obter_categoria)
-        print("[Debug] Mensagem inicial enviada com sucesso!")
-    except Exception as e:
-        print(f"[Erro ao enviar mensagem no Telegram]: {e}")
+    except Exception as err:
+        print(f"[ERRO CRÍTICO NO ENVIO DO TELEGRAM]: {err}")
+    print("--------------------------------------------------")
 
 @bot.message_handler(func=lambda message: True)
 def echo_all(message):
