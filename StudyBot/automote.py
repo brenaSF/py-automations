@@ -163,14 +163,24 @@ def formatar_resposta(lista):
 
 dados_usuario = {}
 
-@bot.message_handler(commands=['estudo'])
+@bot.message_handler(commands=['estudo', 'start'])
 def iniciar_registro(message):
     user_id = message.chat.id
-    dados_usuario[user_id] = {}  # Limpa/inicializa os dados do usuário
+    dados_usuario[user_id] = {}  
     
-    msg = bot.send_message(user_id, "📚 *NOVO REGISTRO DE ESTUDO*\n\nQual é a *categoria*? (ex: Concurso, Faculdade, Inglês)", parse_mode="Markdown")
-    bot.register_next_step_handler(msg, obter_categoria)
+    print(f"[Debug] Comando /estudo recebido do chat_id: {user_id}")
     
+    try:
+        msg = bot.send_message(
+            user_id, 
+            "📚 *NOVO REGISTRO DE ESTUDO*\n\nQual é a *categoria*? (ex: Concurso, Faculdade, Inglês)", 
+            parse_mode="Markdown"
+        )
+        bot.register_next_step_handler(msg, obter_categoria)
+        print("[Debug] Mensagem inicial enviada com sucesso!")
+    except Exception as e:
+        print(f"[Erro ao enviar mensagem no Telegram]: {e}")
+
 @bot.message_handler(func=lambda message: True)
 def echo_all(message):
     bot.reply_to(message, f"Recebido: {message.text}")
