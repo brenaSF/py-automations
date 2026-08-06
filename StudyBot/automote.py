@@ -23,9 +23,9 @@ def home():
 
 @app.route("/webhook", methods=["POST"])
 def telegram_webhook():
-    """Recebe as atualizações do Telegram e passa para o telebot processar."""
     if request.headers.get("content-type") == "application/json":
         json_string = request.get_data().decode("utf-8")
+        print(f"[Debug Webhook] Payload recebido: {json_string}")
         update = telebot.types.Update.de_json(json_string)
         bot.process_new_updates([update])
         return "OK", 200
@@ -170,6 +170,10 @@ def iniciar_registro(message):
     
     msg = bot.send_message(user_id, "📚 *NOVO REGISTRO DE ESTUDO*\n\nQual é a *categoria*? (ex: Concurso, Faculdade, Inglês)", parse_mode="Markdown")
     bot.register_next_step_handler(msg, obter_categoria)
+    
+@bot.message_handler(func=lambda message: True)
+def echo_all(message):
+    bot.reply_to(message, f"Recebido: {message.text}")
 
 def obter_categoria(message):
     user_id = message.chat.id
