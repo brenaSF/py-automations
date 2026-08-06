@@ -9,35 +9,51 @@ import openpyxl
 import requests
 import dotenv
 import telebot
-
 from flask import Flask, request, jsonify
 from services.sheetService import SheetsService
 
 dotenv.load_dotenv()
 
-
 app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot do Ciclo de Estudos está online!", 200
+
+
+@app.route("/webhook", methods=["POST"])
+def telegram_webhook():
+    """Recebe as atualizações do Telegram e passa para o telebot processar."""
+    if request.headers.get("content-type") == "application/json":
+        json_string = request.get_data().decode("utf-8")
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return "OK", 200
+    return "Forbidden", 403
+
+
+def configurar_webhook():
+    """Registra a URL do Webhook junto ao Telegram na inicialização."""
+    if WEBHOOK_URL:
+        full_webhook_url = f"{WEBHOOK_URL.rstrip('/')}/webhook"
+        bot.remove_webhook()
+        sucesso = bot.set_webhook(url=full_webhook_url)
+        if sucesso:
+            print(f"[Info] Webhook configurado com sucesso: {full_webhook_url}")
+        else:
+            print("[Aviso] Falha ao configurar o Webhook no Telegram.")
+    else:
+        print("[Aviso] WEBHOOK_URL não configurada no arquivo .env")
 
 DIR_BASE = os.path.dirname(os.path.abspath(__file__))
 EXCEL_ARQUIVO= os.path.join(DIR_BASE , "ciclo_de_estudos_automatizado.xlsx")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL") 
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 sheets_service = SheetsService()
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
-def validar_sessao_usuario(user_id):
-    """Garante que o estado do usuário existe em memória antes de processar."""
-    if user_id not in dados_usuario:
-        bot.send_message(
-            user_id, 
-            "⚠️ *Sua sessão expirou ou o servidor foi reiniciado.*\n"
-            "Por favor, inicie novamente enviando o comando /estudo.", 
-            parse_mode="Markdown"
-        )
-        return False
-    return True
 
 def notificar_usuario_telegram(mensagem):
     """Envia uma notificação para o usuário via Telegram."""
@@ -150,34 +166,27 @@ dados_usuario = {}
 @bot.message_handler(commands=['estudo'])
 def iniciar_registro(message):
     user_id = message.chat.id
-    dados_usuario[user_id] = {}
+    dados_usuario[user_id] = {}  # Limpa/inicializa os dados do usuário
     
     msg = bot.send_message(user_id, "📚 *NOVO REGISTRO DE ESTUDO*\n\nQual é a *categoria*? (ex: Concurso, Faculdade, Inglês)", parse_mode="Markdown")
     bot.register_next_step_handler(msg, obter_categoria)
 
 def obter_categoria(message):
     user_id = message.chat.id
-    if not validar_sessao_usuario(user_id):
-        return
-
     dados_usuario[user_id]['categoria'] = message.text
+    
     msg = bot.send_message(user_id, "📖 Qual é a *matéria/tópico* estudado? (ex: Java - Streams API)", parse_mode="Markdown")
     bot.register_next_step_handler(msg, obter_materia)
 
 def obter_materia(message):
     user_id = message.chat.id
-    if not validar_sessao_usuario(user_id):
-        return
-
     dados_usuario[user_id]['materia'] = message.text
+    
     msg = bot.send_message(user_id, "⏱️ Quantas *horas* você estudou? (ex: 2 ou 1.5)", parse_mode="Markdown")
     bot.register_next_step_handler(msg, obter_tempo)
 
 def obter_tempo(message):
     user_id = message.chat.id
-    if not validar_sessao_usuario(user_id):
-        return
-
     try:
         dados_usuario[user_id]['tempo_horas'] = float(message.text.replace(',', '.'))
     except ValueError:
@@ -190,9 +199,6 @@ def obter_tempo(message):
 
 def obter_questoes(message):
     user_id = message.chat.id
-    if not validar_sessao_usuario(user_id):
-        return
-
     try:
         dados_usuario[user_id]['questoes'] = int(message.text)
     except ValueError:
@@ -210,9 +216,6 @@ def obter_questoes(message):
 
 def obter_acertos(message):
     user_id = message.chat.id
-    if not validar_sessao_usuario(user_id):
-        return
-
     try:
         acertos = int(message.text)
         questoes = dados_usuario[user_id]['questoes']
@@ -231,10 +234,8 @@ def obter_acertos(message):
 
 def obter_observacao(message):
     user_id = message.chat.id
-    if not validar_sessao_usuario(user_id):
-        return
-
     dados_usuario[user_id]['observacao'] = message.text if message.text != '-' else ""
+    
     dados = dados_usuario[user_id]
     hoje = datetime.date.today().strftime("%Y-%m-%d")
 
@@ -256,28 +257,22 @@ def obter_observacao(message):
     else:
         bot.send_message(user_id, '❌ Ocorreu um erro ao registrar a sessão de estudo na planilha.')
     
-    dados_usuario.pop(user_id, None)
-    
-@app.route('/')
-def home():
-    return "Bot do Ciclo de Estudos está online!", 200
+    del dados_usuario[user_id]
 
-@app.route(f'/{TELEGRAM_BOT_TOKEN}', methods=['POST'])
-def webhook():
-    if request.headers.get('content-type') == 'application/json':
-        json_string = request.get_data().decode('utf-8')
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return "OK", 200
-    return "Forbidden", 403
+ENV = os.getenv("ENV", "local")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    
-    if RENDER_EXTERNAL_URL:
-        webhook_url = f"{RENDER_EXTERNAL_URL.rstrip('/')}/{TELEGRAM_BOT_TOKEN}"
-        bot.remove_webhook()
-        bot.set_webhook(url=webhook_url)
-        print(f"[Info] Webhook configurado em: {webhook_url}")
+    port = int(os.environ.get("PORT", 8000))
 
-    app.run(host="0.0.0.0", port=port)
+    if ENV == "production" and WEBHOOK_URL:
+        configurar_webhook()
+        app.run(host="0.0.0.0", port=port)
+    else:
+        print("[Info] Rodando em modo LOCAL via Polling...")
+        bot.remove_webhook()
+        
+        import threading
+        bot_thread = threading.Thread(target=bot.infinity_polling, daemon=True)
+        bot_thread.start()
+
+        app.run(host="127.0.0.1", port=port, debug=False)
