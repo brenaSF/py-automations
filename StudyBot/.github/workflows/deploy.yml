@@ -1,0 +1,61 @@
+name: CI/CD Bot Telegram
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Testar instalação das dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Notificar início do Deploy no Telegram
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            🚀 **Deploy iniciado!**
+            
+            **Repositório:** ${{ github.repository }}
+            **Commit:** ${{ github.sha }}
+            **Autor:** ${{ github.actor }}
+
+      - name: Disparar Deploy no Render
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+      - name: Notificar Sucesso no Telegram
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ✅ **Deploy disparado com sucesso no Render!**
+            
+            O bot está em processo de atualização e estará ativo em breve.
+
+      - name: Notificar Falha no Telegram
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ❌ **Falha no Pipeline CI/CD!**
+            
+            Ocorreu um erro durante a etapa de testes ou acionamento do deploy.
