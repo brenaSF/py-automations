@@ -261,18 +261,17 @@ def obter_observacao(message):
 
 ENV = os.getenv("ENV", "local")
 
+if ENV == "production":
+    configurar_webhook()
+else:
+    print("[Info] Rodando em modo LOCAL via Polling...")
+    bot.remove_webhook()
+    
+    import threading
+    bot_thread = threading.Thread(target=bot.infinity_polling, daemon=True)
+    bot_thread.start()
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-
-    if ENV == "production" and WEBHOOK_URL:
-        configurar_webhook()
-        app.run(host="0.0.0.0", port=port)
-    else:
-        print("[Info] Rodando em modo LOCAL via Polling...")
-        bot.remove_webhook()
-        
-        import threading
-        bot_thread = threading.Thread(target=bot.infinity_polling, daemon=True)
-        bot_thread.start()
-
-        app.run(host="127.0.0.1", port=port, debug=False)
+    app.run(host="127.0.0.1", port=port, debug=False)
