@@ -52,8 +52,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 sheets_service = SheetsService()
-bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
-
+bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN, threaded=False)
 
 def notificar_usuario_telegram(mensagem):
     """Envia uma notificação para o usuário via Telegram."""
@@ -162,11 +161,9 @@ def formatar_resposta(lista):
            f"⏭️ *Próximo Alvo:* Dar continuidade ao ciclo!"
 
 dados_usuario = {}
-
 @bot.message_handler(commands=['estudo', 'start'])
 def iniciar_registro(message):
-    print("--------------------------------------------------")
-    print(f"[LOG] Executando /estudo para o chat_id: {message.chat.id}")
+    print(f"[LOG] Executando /estudo para chat_id: {message.chat.id}", flush=True)
     
     user_id = message.chat.id
     dados_usuario[user_id] = {}
@@ -174,18 +171,13 @@ def iniciar_registro(message):
     try:
         msg = bot.send_message(
             user_id, 
-            "📚 *NOVO REGISTRO DE ESTUDO*\n\nQual é a *categoria*? (ex: Concurso, Faculdade, Inglês)", 
-            parse_mode="Markdown"
+            "📚 NOVO REGISTRO DE ESTUDO\n\nQual é a categoria? (ex: Concurso, Faculdade, Inglês)"
         )
-        print("[LOG] Mensagem enviada com sucesso ao Telegram!")
+        print("[LOG] Mensagem enviada com sucesso!", flush=True)
         bot.register_next_step_handler(msg, obter_categoria)
     except Exception as err:
-        print(f"[ERRO CRÍTICO NO ENVIO DO TELEGRAM]: {err}")
-    print("--------------------------------------------------")
+        print(f"[ERRO NO TELEGRAM]: {err}", flush=True)
 
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-    bot.reply_to(message, f"Recebido: {message.text}")
 
 def obter_categoria(message):
     user_id = message.chat.id
